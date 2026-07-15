@@ -78,6 +78,50 @@
     font-size:11.5px;
     color:var(--ink-soft);
   }
+  .link-btn{
+    border:none;
+    background:none;
+    color:var(--gold);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:0 0 0 4px;
+  }
+  .names-edit-row{
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    align-items:center;
+    margin-top:4px;
+  }
+  .names-edit-row input{
+    width:90px;
+    padding:6px 8px;
+    font-size:12px;
+    text-align:center;
+  }
+  .mini-btn{
+    padding:7px 10px;
+    border-radius:8px;
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Sora',sans-serif;
+    font-weight:700;
+    font-size:11.5px;
+    cursor:pointer;
+  }
+  .whoami-tag{
+    margin-top:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+  }
+  .whoami-tag strong{ color:var(--ink); }
+  .movement.voided{ opacity:0.55; }
+  .movement.voided .mv-cat,
+  .movement.voided .mv-amount{ text-decoration:line-through; }
   .divider{
     border:none;
     border-top:1px dashed var(--line);
@@ -270,15 +314,21 @@
 const STORAGE_KEY_EXPENSES = 'gastos:movimientos';
 const STORAGE_KEY_CATEGORIES = 'gastos:categorias';
 const STORAGE_KEY_SETTLEMENTS = 'gastos:liquidaciones';
+const STORAGE_KEY_NAMES = 'gastos:nombres';
+const LOCAL_KEY_WHOAMI = 'app:whoami';
 
-const PERSON_A = { id:'andres', label:'Andrés', sign:-1 };
-const PERSON_B = { id:'esposa', label:'Esposa', sign:1 };
+const PERSON_A = { id:'andres', sign:-1 };
+const PERSON_B = { id:'esposa', sign:1 };
 
 const DEFAULT_CATEGORIES = ['Comida','Transporte','Delivery','Frutas','Cosas de Mateo','Remedios','Otros'];
+const DEFAULT_NAMES = { andres: 'Andrés', esposa: 'Esposa' };
 
 let expenses = [];
 let categories = [...DEFAULT_CATEGORIES];
 let settlements = [];
+let names = { ...DEFAULT_NAMES };
+let whoami = null;
+let editingNames = false;
 let currentPerson = PERSON_A.id;
 let currentMonthFilter = 'all';
 let dataReady = false;
@@ -319,7 +369,37 @@ async function loadData(){
   }catch(e){
     settlements = [];
   }
+  try{
+    const res = await window.storage.get(STORAGE_KEY_NAMES, true);
+    names = res && res.value ? JSON.parse(res.value) : { ...DEFAULT_NAMES };
+  }catch(e){
+    names = { ...DEFAULT_NAMES };
+    try{ await window.storage.set(STORAGE_KEY_NAMES, JSON.stringify(names), true); }catch(err){}
+  }
+  try{
+    const res = await window.storage.get(LOCAL_KEY_WHOAMI, false);
+    whoami = res && res.value ? res.value : null;
+  }catch(e){
+    whoami = null;
+  }
   dataReady = true;
+}
+
+async function saveNames(){
+  try{
+    await window.storage.set(STORAGE_KEY_NAMES, JSON.stringify(names), true);
+  }catch(e){
+    alert('No se pudieron guardar los nombres.');
+  }
+}
+
+async function saveWhoami(personId){
+  whoami = personId;
+  try{
+    await window.storage.set(LOCAL_KEY_WHOAMI, personId, false);
+  }catch(e){
+    alert('No se pudo guardar tu identidad en este dispositivo.');
+  }
 }
 
 async function saveSettlements(){
@@ -371,29 +451,48 @@ function computeBalance(list){
 }
 
 function computePendingBalance(){
-  return computeBalance(expenses.filter(e => !e.settled));
+  return computeBalance(expenses.filter(e => !e.settled && !e.voided));
 }
 
 function render(){
   const app = document.getElementById('app');
+
+  if(!whoami){
+    app.innerHTML = `
+      <header>
+        <div class="eyebrow">Libro de cuentas</div>
+        <h1>Gastos en Casa</h1>
+        <div class="subtitle">${names.andres} · ${names.esposa}</div>
+      </header>
+      <hr class="divider">
+      <div class="section-title">¿Quién eres tú en este celular?</div>
+      <div class="toggle-row">
+        <button type="button" class="toggle-btn" id="whoAndres">${names.andres}</button>
+        <button type="button" class="toggle-btn" id="whoEsposa">${names.esposa}</button>
+      </div>
+      <div class="empty-state">Esto solo evita errores accidentales entre ustedes dos, no es una contraseña. Elige una vez por dispositivo.</div>
+    `;
+    document.getElementById('whoAndres').onclick = async () => { await saveWhoami(PERSON_A.id); render(); };
+    document.getElementById('whoEsposa').onclick = async () => { await saveWhoami(PERSON_B.id); render(); };
+    return;
+  }
+
   const filtered = getFilteredExpenses();
   const pendingBalance = computePendingBalance();
   const months = getAvailableMonths();
+  const myLabel = whoami === PERSON_A.id ? names.andres : names.esposa;
 
   let balanceClass = 'zero';
   let balanceText = 'Cuentas al día';
   let balanceSub = 'Nadie debe nada';
-  let payerLabel = '';
   if(pendingBalance > 0.005){
     balanceClass = 'owe';
     balanceText = fmtBs(pendingBalance);
-    balanceSub = 'Andrés le debe a Esposa';
-    payerLabel = PERSON_A.label;
+    balanceSub = `${names.andres} le debe a ${names.esposa}`;
   } else if(pendingBalance < -0.005){
     balanceClass = 'owed';
     balanceText = fmtBs(pendingBalance);
-    balanceSub = 'Esposa le debe a Andrés';
-    payerLabel = PERSON_B.label;
+    balanceSub = `${names.esposa} le debe a ${names.andres}`;
   }
   const showLiquidar = Math.abs(pendingBalance) > 0.005;
 
@@ -407,22 +506,24 @@ function render(){
     const isA = e.person === PERSON_A.id;
     const sign = isA ? '−' : '+';
     const cls = isA ? 'neg' : 'pos';
-    const who = isA ? PERSON_A.label : PERSON_B.label;
+    const who = isA ? names.andres : names.esposa;
+    const canVoid = !e.voided && e.person === whoami;
+    const statusTag = e.voided ? ' · anulado' : (e.settled ? ' · liquidado' : '');
     return `
-      <div class="movement">
+      <div class="movement${e.voided ? ' voided' : ''}">
         <div class="mv-left">
           <span class="mv-cat">${escapeHtml(e.category)}${e.note ? ' · ' + escapeHtml(e.note) : ''}</span>
-          <span class="mv-meta">${e.date} · ${who}${e.settled ? ' · liquidado' : ''}</span>
+          <span class="mv-meta">${e.date} · ${who}${statusTag}</span>
         </div>
         <div class="mv-right">
           <span class="mv-amount ${cls}">${sign} ${fmtBs(e.amount)}</span>
-          <button class="del-btn" onclick="deleteExpense('${e.id}')" aria-label="Eliminar">✕</button>
+          ${canVoid ? `<button class="del-btn" onclick="voidExpense('${e.id}')" aria-label="Anular">✕</button>` : ''}
         </div>
       </div>`;
   }).join('') : '<div class="empty-state">Sin movimientos registrados todavía.</div>';
 
   const catTotals = {};
-  filtered.forEach(e => {
+  filtered.filter(e => !e.voided).forEach(e => {
     if(!catTotals[e.category]) catTotals[e.category] = { a:0, b:0 };
     if(e.person === PERSON_A.id) catTotals[e.category].a += e.amount;
     else catTotals[e.category].b += e.amount;
@@ -466,7 +567,16 @@ function render(){
     <header>
       <div class="eyebrow">Libro de cuentas</div>
       <h1>Gastos en Casa</h1>
-      <div class="subtitle">Andrés · Esposa</div>
+      ${editingNames ? `
+        <div class="names-edit-row">
+          <input type="text" id="editNameA" value="${escapeHtml(names.andres)}" maxlength="20">
+          <input type="text" id="editNameB" value="${escapeHtml(names.esposa)}" maxlength="20">
+          <button id="saveNamesBtn" class="mini-btn">Guardar</button>
+        </div>
+      ` : `
+        <div class="subtitle">${names.andres} · ${names.esposa} <button class="link-btn" id="editNamesBtn">editar</button></div>
+      `}
+      <div class="whoami-tag">Usando como <strong>${myLabel}</strong> · <button class="link-btn" id="changeWhoBtn">cambiar</button></div>
     </header>
 
     <div class="balance-card">
@@ -480,8 +590,8 @@ function render(){
 
     <div class="section-title">Registrar gasto</div>
     <div class="toggle-row">
-      <button type="button" class="toggle-btn ${currentPerson===PERSON_A.id?'active-a':''}" id="btnPersonA">${PERSON_A.label}</button>
-      <button type="button" class="toggle-btn ${currentPerson===PERSON_B.id?'active-b':''}" id="btnPersonB">${PERSON_B.label}</button>
+      <button type="button" class="toggle-btn ${currentPerson===PERSON_A.id?'active-a':''}" id="btnPersonA">${names.andres}</button>
+      <button type="button" class="toggle-btn ${currentPerson===PERSON_B.id?'active-b':''}" id="btnPersonB">${names.esposa}</button>
     </div>
 
     <div class="form-grid">
@@ -544,19 +654,38 @@ function render(){
   document.getElementById('btnSubmit').onclick = handleSubmit;
   const liquidarBtn = document.getElementById('btnLiquidar');
   if(liquidarBtn) liquidarBtn.onclick = handleLiquidar;
+
+  const editNamesBtn = document.getElementById('editNamesBtn');
+  if(editNamesBtn) editNamesBtn.onclick = () => { editingNames = true; render(); };
+  const saveNamesBtn = document.getElementById('saveNamesBtn');
+  if(saveNamesBtn) saveNamesBtn.onclick = async () => {
+    const a = document.getElementById('editNameA').value.trim();
+    const b = document.getElementById('editNameB').value.trim();
+    if(!a || !b){ alert('Los dos nombres son obligatorios.'); return; }
+    names = { andres: a, esposa: b };
+    editingNames = false;
+    await saveNames();
+    render();
+  };
+  document.getElementById('changeWhoBtn').onclick = async () => {
+    if(!confirm(`Vas a cambiar quién eres en este dispositivo. Ahora mismo estás como ${myLabel}. ¿Continuar?`)) return;
+    whoami = null;
+    try{ await window.storage.delete(LOCAL_KEY_WHOAMI, false); }catch(e){}
+    render();
+  };
 }
 
 async function handleLiquidar(){
   const pendingBalance = computePendingBalance();
   if(Math.abs(pendingBalance) <= 0.005) return;
-  const payer = pendingBalance > 0 ? PERSON_A.label : PERSON_B.label;
-  const receiver = pendingBalance > 0 ? PERSON_B.label : PERSON_A.label;
+  const payer = pendingBalance > 0 ? names.andres : names.esposa;
+  const receiver = pendingBalance > 0 ? names.esposa : names.andres;
   const amount = Math.abs(pendingBalance);
   const ok = confirm(`¿Confirmas que ${payer} le pagó ${fmtBs(amount)} a ${receiver}? Esto cierra el saldo actual y arranca en cero.`);
   if(!ok) return;
 
   const now = Date.now();
-  expenses = expenses.map(e => e.settled ? e : { ...e, settled: true, settledAt: now });
+  expenses = expenses.map(e => (e.settled || e.voided) ? e : { ...e, settled: true, settledAt: now });
   settlements.push({
     id: now.toString(36) + Math.random().toString(36).slice(2,7),
     date: todayStr(),
@@ -623,9 +752,24 @@ async function handleSubmit(){
   render();
 }
 
-async function deleteExpense(id){
-  if(!confirm('¿Eliminar este movimiento?')) return;
-  expenses = expenses.filter(e => e.id !== id);
+async function voidExpense(id){
+  const entry = expenses.find(e => e.id === id);
+  if(!entry) return;
+  if(entry.voided){ alert('Este movimiento ya está anulado.'); return; }
+  if(entry.person !== whoami){
+    alert('Solo puedes anular tus propios registros.');
+    return;
+  }
+  if(entry.settled){
+    alert('Este movimiento ya fue liquidado y no se puede anular. Si fue un error, coméntalo directamente para ajustar el próximo cierre.');
+    return;
+  }
+  const reason = prompt('Motivo de la anulación (opcional):', '') || '';
+  if(!confirm(`¿Anular este registro de ${fmtBs(entry.amount)} en "${entry.category}"? Quedará visible en el historial pero no cuenta para el saldo.`)) return;
+
+  expenses = expenses.map(e => e.id === id
+    ? { ...e, voided: true, voidedAt: Date.now(), voidReason: reason.trim() }
+    : e);
   await saveExpenses();
   render();
 }
