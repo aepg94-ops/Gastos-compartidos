@@ -1,0 +1,17 @@
+{
+  "name": "Gastos en Casa",
+  "short_name": "Gastos Casa",
+  "description": "Libro de cuentas compartido para registrar y liquidar gastos entre dos personas.",
+  "start_url": "./libro-de-gastos.html",
+  "display": "standalone",
+  "background_color": "#E4E7DD",
+  "theme_color": "#1F2A24",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%231F2A24'/%3E%3Ctext x='96' y='115' font-size='90' text-anchor='middle' fill='%23EEF0EA' font-family='monospace'%3EBs%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

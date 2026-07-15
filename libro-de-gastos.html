@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libro de Gastos</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1F2A24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos Casa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF0EA;
+    --paper-2:#E4E7DD;
+    --ink:#1F2A24;
+    --ink-soft:#5B6B60;
+    --line:#C9CDBE;
+    --oxblood:#8C3A2B;
+    --oxblood-soft:#F3E2DD;
+    --teal:#1F6F5C;
+    --teal-soft:#DCEDE7;
+    --gold:#B4832E;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper-2);
+    font-family:'Sora',sans-serif;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:18px 10px 60px;
+  }
+  .receipt{
+    width:100%;
+    max-width:430px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:4px;
+    position:relative;
+    box-shadow:0 12px 30px -12px rgba(31,42,36,0.35);
+    overflow:hidden;
+  }
+  .receipt::before, .receipt::after{
+    content:"";
+    position:absolute;
+    left:0; right:0;
+    height:10px;
+    background-image: radial-gradient(circle at 6px 5px, var(--paper-2) 5px, transparent 5.5px);
+    background-size: 16px 10px;
+    background-repeat: repeat-x;
+  }
+  .receipt::before{ top:-1px; }
+  .receipt::after{ bottom:-1px; transform: rotate(180deg); }
+
+  .inner{ padding:22px 18px 18px; }
+
+  header{ text-align:center; margin-bottom:14px; }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:2.5px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+  }
+  h1{
+    font-size:21px;
+    margin:4px 0 2px;
+    letter-spacing:0.5px;
+  }
+  .subtitle{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+  .divider{
+    border:none;
+    border-top:1px dashed var(--line);
+    margin:16px 0;
+  }
+
+  .balance-card{
+    border-radius:var(--radius);
+    padding:16px;
+    text-align:center;
+    border:1px solid var(--line);
+    background:#fff;
+    margin-bottom:14px;
+  }
+  .balance-label{
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .balance-amount{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:800;
+    font-size:34px;
+    margin:6px 0 2px;
+    letter-spacing:-0.5px;
+  }
+  .balance-amount.owe{ color:var(--oxblood); }
+  .balance-amount.owed{ color:var(--teal); }
+  .balance-amount.zero{ color:var(--ink-soft); }
+  .balance-sub{ font-size:12px; color:var(--ink-soft); }
+  .liquidar-btn{
+    margin-top:12px;
+    width:100%;
+    padding:11px;
+    border-radius:10px;
+    border:1.5px solid var(--gold);
+    background:#fff;
+    color:var(--gold);
+    font-family:'Sora',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .liquidar-btn:active{ transform:scale(0.98); background:#FBF3E4; }
+
+  .section-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+
+  .toggle-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .toggle-btn{
+    flex:1;
+    padding:10px 8px;
+    border-radius:10px;
+    border:1.5px solid var(--line);
+    background:#fff;
+    font-family:'Sora',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .toggle-btn.active-a{ background:var(--oxblood-soft); border-color:var(--oxblood); color:var(--oxblood); }
+  .toggle-btn.active-b{ background:var(--teal-soft); border-color:var(--teal); color:var(--teal); }
+
+  .form-grid{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  .row-2{ display:flex; gap:8px; }
+  input, select{
+    width:100%;
+    padding:10px 11px;
+    border-radius:9px;
+    border:1.5px solid var(--line);
+    background:#fff;
+    font-family:'Sora',sans-serif;
+    font-size:14px;
+    color:var(--ink);
+  }
+  input:focus, select:focus, .toggle-btn:focus, button:focus{
+    outline:2px solid var(--gold);
+    outline-offset:1px;
+  }
+  input::placeholder{ color:#9AA396; }
+  label.small{
+    font-size:10.5px;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:.5px;
+    margin-bottom:2px;
+    display:block;
+  }
+
+  .new-cat-row{ display:none; gap:8px; margin-top:6px; }
+  .new-cat-row.show{ display:flex; }
+
+  .submit-btn{
+    margin-top:6px;
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Sora',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    letter-spacing:.3px;
+  }
+  .submit-btn:active{ transform: scale(0.98); }
+  .submit-btn:disabled{ opacity:.5; }
+
+  .filter-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:20px 0 10px;
+  }
+
+  .movement{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .movement:last-child{ border-bottom:none; }
+  .mv-left{ display:flex; flex-direction:column; min-width:0; }
+  .mv-cat{ font-size:13.5px; font-weight:600; }
+  .mv-meta{ font-size:11px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace; }
+  .mv-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .mv-amount{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14.5px; }
+  .mv-amount.neg{ color:var(--oxblood); }
+  .mv-amount.pos{ color:var(--teal); }
+  .del-btn{
+    border:none; background:none; cursor:pointer;
+    color:var(--ink-soft); font-size:14px; padding:2px 4px;
+  }
+
+  .empty-state{
+    text-align:center;
+    padding:20px 10px;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+
+  .cat-bar-wrap{ margin-bottom:10px; }
+  .cat-bar-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px; }
+  .cat-bar-name{ font-weight:600; }
+  .cat-bar-total{ font-family:'JetBrains Mono',monospace; color:var(--ink-soft); }
+  .cat-bar-track{
+    height:7px; border-radius:5px; background:var(--paper-2);
+    overflow:hidden; display:flex;
+  }
+  .cat-bar-a{ background:var(--oxblood); height:100%; }
+  .cat-bar-b{ background:var(--teal); height:100%; }
+
+  .footer-note{
+    text-align:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;
+    color:var(--ink-soft);
+    letter-spacing:1px;
+    margin-top:20px;
+    text-transform:uppercase;
+  }
+
+  select.month-select{ width:auto; padding:7px 10px; font-size:12.5px; }
+
+  .loading{ text-align:center; padding:30px; color:var(--ink-soft); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="receipt">
+  <div class="inner" id="app">
+    <div class="loading" id="loadingMsg">Cargando libro de cuentas…</div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY_EXPENSES = 'gastos:movimientos';
+const STORAGE_KEY_CATEGORIES = 'gastos:categorias';
+const STORAGE_KEY_SETTLEMENTS = 'gastos:liquidaciones';
+
+const PERSON_A = { id:'andres', label:'Andrés', sign:-1 };
+const PERSON_B = { id:'esposa', label:'Esposa', sign:1 };
+
+const DEFAULT_CATEGORIES = ['Comida','Transporte','Delivery','Frutas','Cosas de Mateo','Remedios','Otros'];
+
+let expenses = [];
+let categories = [...DEFAULT_CATEGORIES];
+let settlements = [];
+let currentPerson = PERSON_A.id;
+let currentMonthFilter = 'all';
+let dataReady = false;
+
+function fmtBs(n){
+  const abs = Math.abs(n);
+  return 'Bs ' + abs.toLocaleString('es-BO', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function monthKey(dateStr){
+  return dateStr.slice(0,7); // YYYY-MM
+}
+
+function monthLabel(key){
+  if(key === 'all') return 'Todo';
+  const [y,m] = key.split('-');
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return meses[parseInt(m,10)-1] + ' ' + y;
+}
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY_EXPENSES, true);
+    expenses = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    expenses = [];
+  }
+  try{
+    const res = await window.storage.get(STORAGE_KEY_CATEGORIES, true);
+    categories = res && res.value ? JSON.parse(res.value) : [...DEFAULT_CATEGORIES];
+  }catch(e){
+    categories = [...DEFAULT_CATEGORIES];
+    try{ await window.storage.set(STORAGE_KEY_CATEGORIES, JSON.stringify(categories), true); }catch(err){}
+  }
+  try{
+    const res = await window.storage.get(STORAGE_KEY_SETTLEMENTS, true);
+    settlements = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    settlements = [];
+  }
+  dataReady = true;
+}
+
+async function saveSettlements(){
+  try{
+    await window.storage.set(STORAGE_KEY_SETTLEMENTS, JSON.stringify(settlements), true);
+  }catch(e){
+    alert('No se pudo guardar la liquidación. Intenta de nuevo.');
+  }
+}
+
+async function saveExpenses(){
+  try{
+    await window.storage.set(STORAGE_KEY_EXPENSES, JSON.stringify(expenses), true);
+  }catch(e){
+    alert('No se pudo guardar. Revisa tu conexión e intenta de nuevo.');
+  }
+}
+
+async function saveCategories(){
+  try{
+    await window.storage.set(STORAGE_KEY_CATEGORIES, JSON.stringify(categories), true);
+  }catch(e){
+    alert('No se pudo guardar la categoría nueva.');
+  }
+}
+
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function getAvailableMonths(){
+  const set = new Set(expenses.map(e => monthKey(e.date)));
+  return Array.from(set).sort().reverse();
+}
+
+function getFilteredExpenses(){
+  if(currentMonthFilter === 'all') return expenses;
+  return expenses.filter(e => monthKey(e.date) === currentMonthFilter);
+}
+
+function computeBalance(list){
+  let total = 0;
+  list.forEach(e => {
+    const sign = e.person === PERSON_A.id ? PERSON_A.sign : PERSON_B.sign;
+    total += sign * e.amount;
+  });
+  return total; // positive => Andrés debe a Esposa; negative => Esposa debe a Andrés
+}
+
+function computePendingBalance(){
+  return computeBalance(expenses.filter(e => !e.settled));
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const filtered = getFilteredExpenses();
+  const pendingBalance = computePendingBalance();
+  const months = getAvailableMonths();
+
+  let balanceClass = 'zero';
+  let balanceText = 'Cuentas al día';
+  let balanceSub = 'Nadie debe nada';
+  let payerLabel = '';
+  if(pendingBalance > 0.005){
+    balanceClass = 'owe';
+    balanceText = fmtBs(pendingBalance);
+    balanceSub = 'Andrés le debe a Esposa';
+    payerLabel = PERSON_A.label;
+  } else if(pendingBalance < -0.005){
+    balanceClass = 'owed';
+    balanceText = fmtBs(pendingBalance);
+    balanceSub = 'Esposa le debe a Andrés';
+    payerLabel = PERSON_B.label;
+  }
+  const showLiquidar = Math.abs(pendingBalance) > 0.005;
+
+  const monthOptions = ['<option value="all">Todo</option>']
+    .concat(months.map(m => `<option value="${m}" ${m===currentMonthFilter?'selected':''}>${monthLabel(m)}</option>`))
+    .join('');
+
+  const sortedList = [...filtered].sort((a,b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
+
+  const movementsHtml = sortedList.length ? sortedList.map(e => {
+    const isA = e.person === PERSON_A.id;
+    const sign = isA ? '−' : '+';
+    const cls = isA ? 'neg' : 'pos';
+    const who = isA ? PERSON_A.label : PERSON_B.label;
+    return `
+      <div class="movement">
+        <div class="mv-left">
+          <span class="mv-cat">${escapeHtml(e.category)}${e.note ? ' · ' + escapeHtml(e.note) : ''}</span>
+          <span class="mv-meta">${e.date} · ${who}${e.settled ? ' · liquidado' : ''}</span>
+        </div>
+        <div class="mv-right">
+          <span class="mv-amount ${cls}">${sign} ${fmtBs(e.amount)}</span>
+          <button class="del-btn" onclick="deleteExpense('${e.id}')" aria-label="Eliminar">✕</button>
+        </div>
+      </div>`;
+  }).join('') : '<div class="empty-state">Sin movimientos registrados todavía.</div>';
+
+  const catTotals = {};
+  filtered.forEach(e => {
+    if(!catTotals[e.category]) catTotals[e.category] = { a:0, b:0 };
+    if(e.person === PERSON_A.id) catTotals[e.category].a += e.amount;
+    else catTotals[e.category].b += e.amount;
+  });
+  const catEntries = Object.entries(catTotals)
+    .map(([name, v]) => ({ name, total: v.a + v.b, a: v.a, b: v.b }))
+    .sort((x,y) => y.total - x.total);
+  const maxCatTotal = catEntries.length ? catEntries[0].total : 1;
+
+  const catBarsHtml = catEntries.length ? catEntries.map(c => {
+    const pctA = c.total ? (c.a / maxCatTotal) * 100 : 0;
+    const pctB = c.total ? (c.b / maxCatTotal) * 100 : 0;
+    return `
+      <div class="cat-bar-wrap">
+        <div class="cat-bar-top">
+          <span class="cat-bar-name">${escapeHtml(c.name)}</span>
+          <span class="cat-bar-total">${fmtBs(c.total)}</span>
+        </div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-a" style="width:${pctA}%"></div>
+          <div class="cat-bar-b" style="width:${pctB}%"></div>
+        </div>
+      </div>`;
+  }).join('') : '<div class="empty-state">Sin datos por categoría aún.</div>';
+
+  const catOptionsHtml = categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+  const sortedSettlements = [...settlements].sort((a,b) => b.createdAt - a.createdAt);
+  const settlementsHtml = sortedSettlements.length ? sortedSettlements.map(s => `
+      <div class="movement">
+        <div class="mv-left">
+          <span class="mv-cat">${escapeHtml(s.payer)} pagó a ${escapeHtml(s.receiver)}</span>
+          <span class="mv-meta">${s.date}</span>
+        </div>
+        <div class="mv-right">
+          <span class="mv-amount">${fmtBs(s.amount)}</span>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Todavía no se registró ninguna liquidación.</div>';
+
+  app.innerHTML = `
+    <header>
+      <div class="eyebrow">Libro de cuentas</div>
+      <h1>Gastos en Casa</h1>
+      <div class="subtitle">Andrés · Esposa</div>
+    </header>
+
+    <div class="balance-card">
+      <div class="balance-label">Saldo pendiente</div>
+      <div class="balance-amount ${balanceClass}">${balanceText}</div>
+      <div class="balance-sub">${balanceSub}</div>
+      ${showLiquidar ? `<button class="liquidar-btn" id="btnLiquidar">Marcar como pagado — liquidar ${fmtBs(Math.abs(pendingBalance))}</button>` : ''}
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-title">Registrar gasto</div>
+    <div class="toggle-row">
+      <button type="button" class="toggle-btn ${currentPerson===PERSON_A.id?'active-a':''}" id="btnPersonA">${PERSON_A.label}</button>
+      <button type="button" class="toggle-btn ${currentPerson===PERSON_B.id?'active-b':''}" id="btnPersonB">${PERSON_B.label}</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="row-2">
+        <div style="flex:1">
+          <label class="small">Monto (Bs)</label>
+          <input type="number" id="inputAmount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+        </div>
+        <div style="flex:1">
+          <label class="small">Fecha</label>
+          <input type="date" id="inputDate" value="${todayStr()}">
+        </div>
+      </div>
+      <div>
+        <label class="small">Cuenta</label>
+        <select id="inputCategory">
+          ${catOptionsHtml}
+          <option value="__new__">+ Nueva categoría…</option>
+        </select>
+      </div>
+      <div class="new-cat-row" id="newCatRow">
+        <input type="text" id="inputNewCat" placeholder="Nombre de la categoría">
+      </div>
+      <div>
+        <label class="small">Nota (opcional)</label>
+        <input type="text" id="inputNote" placeholder="Ej: supermercado, farmacia...">
+      </div>
+    </div>
+    <button class="submit-btn" id="btnSubmit">Registrar</button>
+
+    <hr class="divider">
+
+    <div class="filter-row">
+      <div class="section-title" style="margin:0;">Movimientos</div>
+      <select class="month-select" id="monthFilter">${monthOptions}</select>
+    </div>
+    <div id="movementsList">${movementsHtml}</div>
+
+    <hr class="divider">
+
+    <div class="section-title">Por cuenta</div>
+    <div id="catBreakdown">${catBarsHtml}</div>
+
+    <hr class="divider">
+
+    <div class="section-title">Historial de liquidaciones</div>
+    <div id="settlementsList">${settlementsHtml}</div>
+
+    <div class="footer-note">— cierre y compensación a fin de mes —</div>
+  `;
+
+  document.getElementById('btnPersonA').onclick = () => { currentPerson = PERSON_A.id; render(); };
+  document.getElementById('btnPersonB').onclick = () => { currentPerson = PERSON_B.id; render(); };
+  document.getElementById('monthFilter').onchange = (ev) => { currentMonthFilter = ev.target.value; render(); };
+  document.getElementById('inputCategory').onchange = (ev) => {
+    const row = document.getElementById('newCatRow');
+    if(ev.target.value === '__new__'){ row.classList.add('show'); }
+    else { row.classList.remove('show'); }
+  };
+  document.getElementById('btnSubmit').onclick = handleSubmit;
+  const liquidarBtn = document.getElementById('btnLiquidar');
+  if(liquidarBtn) liquidarBtn.onclick = handleLiquidar;
+}
+
+async function handleLiquidar(){
+  const pendingBalance = computePendingBalance();
+  if(Math.abs(pendingBalance) <= 0.005) return;
+  const payer = pendingBalance > 0 ? PERSON_A.label : PERSON_B.label;
+  const receiver = pendingBalance > 0 ? PERSON_B.label : PERSON_A.label;
+  const amount = Math.abs(pendingBalance);
+  const ok = confirm(`¿Confirmas que ${payer} le pagó ${fmtBs(amount)} a ${receiver}? Esto cierra el saldo actual y arranca en cero.`);
+  if(!ok) return;
+
+  const now = Date.now();
+  expenses = expenses.map(e => e.settled ? e : { ...e, settled: true, settledAt: now });
+  settlements.push({
+    id: now.toString(36) + Math.random().toString(36).slice(2,7),
+    date: todayStr(),
+    payer,
+    receiver,
+    amount: Math.round(amount * 100) / 100,
+    createdAt: now
+  });
+
+  await saveExpenses();
+  await saveSettlements();
+  render();
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function handleSubmit(){
+  const btn = document.getElementById('btnSubmit');
+  const amountRaw = document.getElementById('inputAmount').value;
+  const amount = parseFloat(amountRaw);
+  const date = document.getElementById('inputDate').value || todayStr();
+  let category = document.getElementById('inputCategory').value;
+  const note = document.getElementById('inputNote').value.trim();
+
+  if(!amount || amount <= 0){
+    alert('Ingresa un monto válido.');
+    return;
+  }
+
+  if(category === '__new__'){
+    const newCat = document.getElementById('inputNewCat').value.trim();
+    if(!newCat){
+      alert('Escribe el nombre de la nueva categoría.');
+      return;
+    }
+    category = newCat;
+    if(!categories.includes(newCat)){
+      categories.push(newCat);
+      btn.disabled = true;
+      await saveCategories();
+    }
+  }
+
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    person: currentPerson,
+    amount: Math.round(amount * 100) / 100,
+    category,
+    note,
+    date,
+    createdAt: Date.now()
+  };
+
+  expenses.push(entry);
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+  await saveExpenses();
+  btn.disabled = false;
+  btn.textContent = 'Registrar';
+  render();
+}
+
+async function deleteExpense(id){
+  if(!confirm('¿Eliminar este movimiento?')) return;
+  expenses = expenses.filter(e => e.id !== id);
+  await saveExpenses();
+  render();
+}
+
+(async function init(){
+  await loadData();
+  render();
+})();
+</script>
+
+</body>
+</html>
